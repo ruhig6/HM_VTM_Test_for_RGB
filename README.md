@@ -26,6 +26,6 @@ Above operatins can be realized by ```convert.py``` for videos.
 ## Test
 
 * A spare CPU is needed for fair time comparison.
-1. Just run ```run.py``` for three steps: Code and recover YUV444 10le, Convert YUV444 10le to PNG, Evaluate by PSNR and MS-SSIM.
+1. Just run ```run.py``` for three steps: Code and recover YUV444 10le, Convert YUV444 10le to PNG, Evaluate by PSNR and MS-SSIM. Attention to modify path and cfg.
 
 2. Use the corresponding cfg for LD or RA mode of HM/VTM. QP = 22,27,32,37.
