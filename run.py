@@ -5,14 +5,16 @@ from PIL import Image
 from pytorch_msssim import ms_ssim
 import torchvision
 
+QP = 27
 # Step1 编解码
 print("Step 1 start!")
 
-raw_path = '../../data/UVG/rgb_crop444/'  #测试集
-gt_path = '../../data/UVG/GT/'  #原图集
-rec_path = './results/UVG/rec/RA27/' #压缩后的yuv存放路径
-bin_path = './results/UVG/bin/RA27/' #编码后的码流存放路径
-log_path = './results/UVG/log/RA27/' #编码后的log存放路径
+raw_path = '../../data/MCL/rgb_crop444/'  #测试集
+gt_path = '../../data/MCL/images/'  #原图集
+rec_path = './results/MCL/rec/RA' + str(QP) +'/' #压缩后的yuv存放路径
+png_path = './results/MCL/png/RA' + str(QP) +'/' #分帧后的png存放路径
+bin_path = './results/MCL/bin/RA' + str(QP) +'/' #编码后的码流存放路径
+log_path = './results/MCL/log/RA' + str(QP) +'/' #编码后的log存放路径
 
 if not os.path.exists(rec_path):
     os.makedirs(rec_path)
@@ -25,12 +27,11 @@ raw_list = os.listdir(raw_path)
 for i in range(len(raw_list)):
     raw_yuvpath = raw_path + raw_list[i]
     yuv_name = raw_list[i].split('.')[0]
-    yuv_frame = yuv_name.split('_')[3]
     bin_path_final = bin_path + yuv_name
     log_path_final = log_path + yuv_name
     rec_path_final = rec_path + yuv_name + '.yuv'
     print(yuv_name)
-    os.system('./bin/TAppEncoderStatic -c ./cfg/UVG/uvg_ssim.cfg -c ./cfg/encoder_randomaccess_main_rext.cfg -i ' + raw_yuvpath + ' -b ' + bin_path_final + '.bin' + ' > '+ log_path_final +  '.txt')
+    os.system('./bin/TAppEncoderStatic -c ./cfg/1080p/uvg_ssim.cfg -c ./cfg/encoder_randomaccess_main_rext.cfg -q ' + str(QP) + ' -i ' + raw_yuvpath + ' -b ' + bin_path_final + '.bin' + ' > '+ log_path_final +  '.txt')
     os.system('./bin/TAppDecoderStatic'  + ' -b ' + bin_path_final + '.bin' + ' -o ' + rec_path_final  + ' > '+ log_path_final +  '.log')
     
 print("Step 1 over!")
@@ -38,16 +39,16 @@ print("Step 1 over!")
 # Step2 分帧
 print("Step 2 start!")
 
-num = 7
-video_name = ['Beauty_1920x1024_120fps_444_10bit_YUV.yuv', 'HoneyBee_1920x1024_120fps_444_10bit_YUV.yuv', 'ReadySteadyGo_1920x1024_120fps_444_10bit_YUV.yuv',  'YachtRide_1920x1024_120fps_444_10bit_YUV.yuv', 'Bosphorus_1920x1024_120fps_444_10bit_YUV.yuv',  'Jockey_1920x1024_120fps_444_10bit_YUV.yuv', 'ShakeNDry_1920x1024_120fps_444_10bit_YUV.yuv']
-short = ['Beauty', 'HoneyBee', 'ReadySteadyGo', 'YachtRide', 'Bosphorus', 'Jockey', 'ShakeNDry']
-
-for k in range(num):
-    saveroot = rec_path + short[k]
-    savepath = rec_path + short[k] + '/im%03d.png'
+rec_list = os.listdir(rec_path)
+for k in range(len(rec_list)):
+    rec_yuvpath = rec_path + rec_list[k]
+    yuv_name = raw_list[i].split('.')[0]
+    yuv_num = yuv_name.split('_')[0]
+    saveroot = png_path + yuv_num
+    savepath = saveroot + '/im%03d.png'
     if not os.path.exists(saveroot):
         os.makedirs(saveroot)
-    os.system('ffmpeg -y -pix_fmt yuv444p10le -s 1920x1024 -i ' + rec_path + video_name[k] +  ' ' + savepath)
+    os.system('ffmpeg -y -pix_fmt yuv444p10le -s 1920x1024 -i ' + rec_yuvpath +  ' ' + savepath)
     
 print("Step 2 over!")
 
@@ -63,10 +64,10 @@ def psnr(img1, img2):
     return 10 * math.log10(255.0 * 255.0 / mse)
 
 all_psnr = all_ssim = 0
-
-for m in range(num):
-    path1 = rec_path +  short[m] + '/'
-    path2 = gt_path + short[m] + '/'
+png_list = os.listdir(png_path)
+for m in range(len(png_list)):
+    path1 = png_path +  png_list[m] + '/'
+    path2 = gt_path + png_list[m] + '/'
     list_psnr = []
     list_ssim = []
     for n in range(1, 97):
@@ -85,14 +86,14 @@ for m in range(num):
     all_psnr += avg_psnr
     all_ssim += avg_ssim
     with open(log_path + "results.txt","a") as f:
-        f.write(short[m])
+        f.write(png_list[m])
         f.write(' ' + str(avg_psnr))
         f.write(' ' + str(avg_ssim))
         f.write('\n')
 
 with open(log_path + "results.txt","a") as f:
         f.write("all_videos_avg_results:")
-        f.write(' ' + str(all_psnr/num))
-        f.write(' ' + str(all_ssim/num))
+        f.write(' ' + str(all_psnr/len(png_list)))
+        f.write(' ' + str(all_ssim/len(png_list)))
     
 print("Step 3 over!")
